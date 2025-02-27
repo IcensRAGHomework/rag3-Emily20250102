@@ -14,8 +14,10 @@ gpt_emb_config = get_model_configuration(gpt_emb_version)
 dbpath = "./"
 csv_file_name = "COA_OpenData.csv"
 
-def get_db_collection():
+def generate_hw01():
+    # 連接地端的database
     chroma_client = chromadb.PersistentClient(path=dbpath)
+    # 建立embedding function
     openai_ef = embedding_functions.OpenAIEmbeddingFunction(
         api_key = gpt_emb_config['api_key'],
         api_base = gpt_emb_config['api_base'],
@@ -35,9 +37,6 @@ def get_db_collection():
         df = pd.read_csv(csv_file_name)
         print("columns: "+df.columns)
 
-        required_columns = {"Name", "Type", "Address", "Tel", "City", "Town", "CreateDate", "HostWords"}
-        if not required_columns.issubset(df.columns):
-            raise ValueError(f"CSV 缺少欄位: {required_columns - set(df.columns)}")
         for idx, row in df.iterrows():
             metadata = {
                 "file_name": csv_file_name,
@@ -47,7 +46,7 @@ def get_db_collection():
                 "tel": row["Tel"],
                 "city": row["City"],
                 "town": row["Town"],
-                "date": int(datetime.datetime.strptime(row['CreateDate'], '%Y-%m-%d').timestamp())  # 轉換為時間戳
+                "date": int(datetime.datetime.strptime(row['CreateDate'], '%Y-%m-%d').timestamp())  # 轉timeStamp
             }
             print(str(idx)+str(metadata))
             print("\n")
@@ -59,108 +58,64 @@ def get_db_collection():
             )
     return collection
 
-def query_data_from_collection_hw02(collection, question, city, store_type, start_date, end_date):
-    results = collection.query(
-        query_texts=[question],
-        n_results=10,
-        include=["metadatas", "distances"],
-        where={
-            "$and": [
-                {"date": {"$gte": int(start_date.timestamp())}},
-                {"date": {"$lte": int(end_date.timestamp())}},
-                {"type": {"$in": store_type}},
-                {"city": {"$in": city}}
-            ]
-        }
-    )
-    print(results)
-    return results
-
-def filter_data_hw02(data, similarity):
-    filtered_results = []
-    for index, distance in enumerate(data["distances"][0]):
-            print(distance)
-            if 1-distance > similarity:
-                name = data["metadatas"][0][index]["name"]
-                print("name = "+ name)
-                filtered_results.append(name)
-    print(filtered_results)
-    return filtered_results
-
-def query_data_from_collection_hw03(collection, question, city, store_type):
-    results = collection.query(
-        query_texts=[question],
-        n_results=10,
-        include=["metadatas", "distances"],
-        where={
-            "$and": [
-                {"type": {"$in": store_type}},
-                {"city": {"$in": city}}
-            ]
-        }
-    )
-
-    print(results)
-    print("\n")
-    return results
-
-def filter_data_hw03(data, similarity):
-    store_similarity = []
-    store_name = []
-
-    for index, distance in enumerate(data["distances"][0]):
-        if 1-distance > similarity:
-            new_store_name = data['metadatas'][0][index].get('new_store_name', "")
-            name = data['metadatas'][0][index]['name']
-            store_name.append(new_store_name if new_store_name else name)
-            store_similarity.append(float(1 - distance))
-    
-    print(store_similarity)
-    print(store_name)
-    # 將 store_similarity 和 store_name 配對
-    paired_list = list(zip(store_similarity, store_name))
-    # 根據 similarity 進行遞減排序
-    sorted_paired_list = sorted(paired_list, key=lambda x: x[0], reverse= True)
-    # 拆分排序後的配對列表
-    sorted_store_similarity, sorted_store_name = zip(*sorted_paired_list)
-    sorted_store_similarity = list(sorted_store_similarity)
-    sorted_store_name = list(sorted_store_name)
-    print(sorted_store_similarity)
-    print(sorted_store_name)
-    return sorted_store_name
-
-
-def generate_hw01():
-    collection = get_db_collection()
-    return collection
-    
 def generate_hw02(question, city, store_type, start_date, end_date):
     print(
-    "question = " + str(question) + ",\n"
-    "city = " + str(city) + ",\n"
-    "store_type = " + str(store_type) + ",\n"
-    "start_date = " + str(start_date) + ",\n"
-    "end_date = " + str(end_date)
+        "question = " + str(question) + ",\n"
+        "city = " + str(city) + ",\n"
+        "store_type = " + str(store_type) + ",\n"
+        "start_date = " + str(start_date) + ",\n"
+        "end_date = " + str(end_date)
     )
-    collection = get_db_collection()
-    # add filter(where)
+
+    collection = generate_hw01()
+
     # query data from db collection
-    data_from_db = query_data_from_collection_hw02(collection, question, city, store_type, start_date, end_date)
-    # filter data based on similarity
-    return filter_data_hw02(data_from_db, 0.8)
+    query_results = collection.query(
+        query_texts=[question],
+        n_results=10,
+        include=["metadatas", "distances"],
+        where={
+            "$and": [
+                {"date": {"$gte": int(start_date.timestamp())}}, # greater than or equal
+                {"date": {"$lte": int(end_date.timestamp())}}, # less than or equal
+                {"type": {"$in": store_type}},
+                {"city": {"$in": city}}
+            ]
+        }
+    )
+    # print(query_results)
+
+    # filter data based on similarity >= 0.8
+    filtered_similarity = []
+    filtered_store_name = []
+    for index in range(len(query_results['ids'])):
+        for distance, metadata in zip(query_results['distances'][index], query_results['metadatas'][index]):
+            similarity = 1 - distance
+            if similarity >= 0.8:
+                filtered_similarity.append(similarity)
+                filtered_store_name.append(metadata['name'])
+
+    filtered_results = sorted(zip(filtered_similarity, filtered_store_name), key=lambda x: x[0], reverse=True)
+    # print(filtered_results) 
+
+    sorted_store_names = [name for _, name in filtered_results]
+    print(sorted_store_names)
+
+    return sorted_store_names
 
     
 def generate_hw03(question, store_name, new_store_name, city, store_type):
     print(
-    "question = " + str(question) + ",\n"
-    "store_name = " + str(store_name) + ",\n"
-    "new_store_name = " + str(new_store_name) + ",\n"
-    "city = " + str(city) + ",\n"
-    "store_type = " + str(store_type)
+        "question = " + str(question) + ",\n"
+        "store_name = " + str(store_name) + ",\n"
+        "new_store_name = " + str(new_store_name) + ",\n"
+        "city = " + str(city) + ",\n"
+        "store_type = " + str(store_type)
     )
     # 找到指定店家，並在Metadata新增新的參數，名稱為 new_store_name
-    collection = get_db_collection()
+    collection = generate_hw01()
     get_selected_store = collection.get(where={"name": store_name})
+    # print(get_selected_store)
     metadatas = [{**meta, "new_store_name": new_store_name} for meta in get_selected_store.get("metadatas", [])]
     collection.upsert(ids=get_selected_store.get("ids", []), metadatas=metadatas, documents=get_selected_store.get("documents", []))
     
@@ -170,9 +125,38 @@ def generate_hw03(question, store_name, new_store_name, city, store_type):
     #         collection.update_document_metadata((doc_id, meta))
 
     # 透過問題取得的店家名稱，如果該店家的 Metadata 有 new_store_name 參數，請用該參數來顯示新的店家名稱
-    data_from_db = query_data_from_collection_hw03(collection, question, city, store_type)
-    return filter_data_hw03(data_from_db, 0.8)
+    query_results = collection.query(
+        query_texts=[question],
+        n_results=10,
+        include=["metadatas", "distances"],
+        where={
+            "$and": [
+                {"type": {"$in": store_type}},
+                {"city": {"$in": city}}
+            ]
+        }
+    )
+    # print(query_results)
 
+
+    filtered_similarity = []
+    filtered_store_name = []
+    for index in range(len(query_results["ids"])):
+        for distance, metadata in zip(query_results['distances'][index], query_results['metadatas'][index]):
+            similarity = float(1 - distance)
+            if similarity >= 0.8:
+                # print(str(similarity)+","+str(metadata['name'])) 
+                filtered_similarity.append(similarity)
+                new_store_name = metadata.get('new_store_name', "")
+                name = metadata['name']
+                filtered_store_name.append(new_store_name if new_store_name else name) # value_if_true if condition else value_if_false
+
+    filtered_results = sorted(zip(filtered_similarity, filtered_store_name), key=lambda x: x[0], reverse=True)
+    print(filtered_results) 
+
+    sorted_store_names = [name for _, name in filtered_results] # [expression for item in iterable]
+    print(sorted_store_names)
+    return sorted_store_names
     
 def demo(question):
     chroma_client = chromadb.PersistentClient(path=dbpath)
