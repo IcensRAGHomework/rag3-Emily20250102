@@ -64,7 +64,7 @@ def generate_hw02(question, city, store_type, start_date, end_date):
         "city = " + str(city) + ",\n"
         "store_type = " + str(store_type) + ",\n"
         "start_date = " + str(start_date) + ",\n"
-        "end_date = " + str(end_date)
+        "end_date = " + str(end_date) + ",\n"
     )
 
     collection = generate_hw01()
@@ -83,7 +83,7 @@ def generate_hw02(question, city, store_type, start_date, end_date):
             ]
         }
     )
-    print(query_results)
+    # print(query_results)
 
     # filter data based on similarity >= 0.8
     filtered_similarity = []
@@ -91,15 +91,16 @@ def generate_hw02(question, city, store_type, start_date, end_date):
     for index in range(len(query_results['ids'])):
         for distance, metadata in zip(query_results['distances'][index], query_results['metadatas'][index]):
             similarity = 1 - distance
+            print(str(similarity)+","+str(metadata['name'])) 
             if similarity >= 0.8:
                 filtered_similarity.append(similarity)
                 filtered_store_name.append(metadata['name'])
                 
     filtered_results = sorted(zip(filtered_similarity, filtered_store_name), key=lambda x: x[0], reverse=True)
-    print(filtered_results) 
+    # print(filtered_results) 
 
     sorted_store_names = [name for _, name in filtered_results]
-    print(sorted_store_names)
+    print("\n"+str(sorted_store_names))
 
     return sorted_store_names
 
@@ -110,7 +111,7 @@ def generate_hw03(question, store_name, new_store_name, city, store_type):
         "store_name = " + str(store_name) + ",\n"
         "new_store_name = " + str(new_store_name) + ",\n"
         "city = " + str(city) + ",\n"
-        "store_type = " + str(store_type)
+        "store_type = " + str(store_type) + ",\n"
     )
     # 找到指定店家，並在Metadata新增新的參數，名稱為 new_store_name
     collection = generate_hw01()
@@ -143,19 +144,19 @@ def generate_hw03(question, store_name, new_store_name, city, store_type):
     filtered_store_name = []
     for index in range(len(query_results["ids"])):
         for distance, metadata in zip(query_results['distances'][index], query_results['metadatas'][index]):
-            similarity = float(1 - distance)
+            similarity = 1 - distance
             if similarity >= 0.8:
-                # print(str(similarity)+","+str(metadata['name'])) 
+                print(str(similarity)+","+str(metadata['name'])) 
                 filtered_similarity.append(similarity)
                 new_store_name = metadata.get('new_store_name', "")
                 name = metadata['name']
                 filtered_store_name.append(new_store_name if new_store_name else name) # value_if_true if condition else value_if_false
 
     filtered_results = sorted(zip(filtered_similarity, filtered_store_name), key=lambda x: x[0], reverse=True)
-    print(filtered_results) 
+    # print(filtered_results) 
 
     sorted_store_names = [name for _, name in filtered_results] # [expression for item in iterable]
-    print(sorted_store_names)
+    print("\n"+str(sorted_store_names))
     return sorted_store_names
     
 def demo(question):
