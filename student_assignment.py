@@ -83,7 +83,7 @@ def generate_hw02(question, city, store_type, start_date, end_date):
             ]
         }
     )
-    # print(query_results)
+    print(query_results)
 
     # filter data based on similarity >= 0.8
     filtered_similarity = []
@@ -94,9 +94,9 @@ def generate_hw02(question, city, store_type, start_date, end_date):
             if similarity >= 0.8:
                 filtered_similarity.append(similarity)
                 filtered_store_name.append(metadata['name'])
-
+                
     filtered_results = sorted(zip(filtered_similarity, filtered_store_name), key=lambda x: x[0], reverse=True)
-    # print(filtered_results) 
+    print(filtered_results) 
 
     sorted_store_names = [name for _, name in filtered_results]
     print(sorted_store_names)
@@ -181,8 +181,13 @@ if __name__ == "__main__":
     generate_hw01()
     print("\n")
     print("****************hw03_2******************")
-    generate_hw02("我要找有關茶餐點的店家", ["宜蘭縣", "新北市"], ["美食"], datetime.datetime(2024, 4, 1), datetime.datetime(2024, 5, 1))
+    generate_hw02("我想要找有關茶餐點的店家", ["宜蘭縣", "新北市"], ["美食"], datetime.datetime(2024, 4, 1), datetime.datetime(2024, 5, 1))
     print("\n")
     print("****************hw03_3******************")
     generate_hw03("我想要找南投縣的田媽媽餐廳，招牌是蕎麥麵", "耄饕客棧", "田媽媽（耄饕客棧）", ["南投縣"], ["美食"])
     print("\n")
+
+
+
+
+
